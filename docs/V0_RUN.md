@@ -1,4 +1,4 @@
-# V0 运行说明（第三步）
+# V0 运行说明（第四步：模板系统与概率采样）
 
 ## 1) 启动 backend (FastAPI)
 
@@ -11,13 +11,7 @@ cd ..
 uvicorn backend.main:app --reload --port 8000
 ```
 
-健康检查：
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-## 2) 启动 frontend (React + Vite + TypeScript)
+## 2) 启动 frontend
 
 ```bash
 cd frontend
@@ -25,65 +19,77 @@ npm install
 npm run dev
 ```
 
-默认访问：
+## 3) 模板选择与模式说明
 
-- http://127.0.0.1:5173
+- 模板文件目录：`templates/`
+- 前端会在页面加载时调用 `GET /templates` 并填充模板下拉框。
+- 生成模式：
+  - `explicit`：使用前端手动参数（兼容旧模式）。
+  - `probabilistic`：根据模板 `probability_distributions` 采样；部分手动参数会被模板采样覆盖。
 
-## 3) 前端参数面板使用
+## 4) GET /templates
 
-首页新增 5 组参数面板：
+返回格式：
 
-- A. 图像与预览设置：`preview_count`、`seed`、`grid`
-- B. 坐标轴设置：`x_label`、`x_unit`、`y_label`、`y_unit`（下拉+可自定义）
-- C. 曲线设置：`num_curves`、`curve_shape`、`points_per_curve`、`noise_level`
-- D. 曲线视觉风格：`line_style`、`line_width`、`marker`
-- E. 图例设置：`legend_position`
+```json
+{
+  "status": "ok",
+  "count": 7,
+  "items": [
+    {
+      "template_id": "real_mainstream",
+      "template_name": "Real Mainstream",
+      "description": "Mainstream paper-like creep chart style.",
+      "file_name": "real_mainstream.yaml"
+    }
+  ]
+}
+```
 
-调参后点击“生成预览图”按钮，前端会将参数通过 `POST /preview` 发送到后端，页面会显示 3–6 张预览图、路径信息和可展开的 MCG-JSON。
+## 5) POST /preview 新字段
 
-## 4) /preview 请求字段
+新增请求字段：
 
-`POST /preview` 当前支持字段：
+- `mode`: `explicit` | `probabilistic`（默认 `explicit`）
+- `template_id`: 模板 ID（默认 `real_mainstream`）
 
-- `preview_count` (3-6)
-- `seed`
-- `grid`
-- `x_label`, `x_unit`, `y_label`, `y_unit`
-- `num_curves` (1-4)
-- `curve_shape` (`near_linear` / `primary_obvious` / `accelerated_obvious`)
-- `points_per_curve` (50-500)
-- `noise_level` (0-0.1)
-- `line_style` (`solid` / `dashed` / `dotted` / `dashdot`)
-- `line_width` (0.5-4)
-- `marker` (`none` / `triangle` / `circle` / `square`)
-- `legend_position` (`none` / `inside_upper_right` / `inside_upper_left` / `inside_lower_right` / `outside_right`)
-
-示例：
+### explicit 示例
 
 ```bash
 curl -X POST http://127.0.0.1:8000/preview \
   -H 'Content-Type: application/json' \
   -d '{
-    "preview_count":4,
-    "seed":20260520,
-    "grid":true,
-    "x_label":"Time",
-    "x_unit":"hr",
-    "y_label":"Strain",
-    "y_unit":"%",
-    "num_curves":2,
-    "curve_shape":"accelerated_obvious",
-    "points_per_curve":220,
-    "noise_level":0.01,
-    "line_style":"dashdot",
-    "line_width":2.2,
-    "marker":"circle",
-    "legend_position":"outside_right"
+    "mode":"explicit",
+    "template_id":"real_mainstream",
+    "preview_count":3,
+    "num_curves":3,
+    "curve_shape":"near_linear",
+    "seed":20260520
   }'
 ```
 
-## 5) 预览输出位置
+### probabilistic 示例
 
-- PNG: `examples/previews/images/`
-- CSV: `examples/previews/csv/`
-- MCG-JSON: `examples/previews/annotations/`
+```bash
+curl -X POST http://127.0.0.1:8000/preview \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mode":"probabilistic",
+    "template_id":"real_mainstream",
+    "preview_count":6,
+    "seed":20260520
+  }'
+```
+
+## 6) MCG-JSON 追踪字段
+
+每张预览图的 MCG-JSON 中会记录：
+
+- `mode`
+- `template_id`
+- `template_name`
+- `seed`
+- `sampled_parameters`
+- `actual_parameters`
+
+用于追踪每张图实际生成参数与复现。

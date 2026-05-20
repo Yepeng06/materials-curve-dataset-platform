@@ -1,0 +1,16 @@
+template_name: Multi Curve Comparison
+description: Multi-curve comparison chart for contrast experiments.
+image_settings: {width: 1100, height: 780, dpi: 140}
+axis_settings: {x_label: Time, x_unit: hr, y_label: Strain, y_unit: "%", x_range: [0, 1200]}
+curve_settings: {num_curves: 4, curve_shape: primary_obvious, points_per_curve: 180, noise_level: 0.02}
+style_settings: {line_style: solid, line_width: 1.4, marker: circle}
+legend_settings: {legend_position: outside_right}
+grid_settings: {grid: true}
+default_parameters: {num_curves: 4, curve_shape: primary_obvious, line_style: solid, marker: circle, legend_position: outside_right, grid: true}
+probability_distributions:
+  num_curves: {"3": 0.3, "4": 0.7}
+  curve_shape: {near_linear: 0.25, primary_obvious: 0.45, accelerated_obvious: 0.3}
+  line_style: {solid: 0.65, dashed: 0.2, dashdot: 0.15}
+  marker: {none: 0.2, circle: 0.5, square: 0.3}
+  legend_position: {outside_right: 0.6, inside_upper_right: 0.25, inside_upper_left: 0.15}
+  grid: {true: 0.8, false: 0.2}

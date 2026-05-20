@@ -1,0 +1,16 @@
+template_name: Low Quality Screenshot
+description: Screenshot-like noisy style (without degradation stage yet).
+image_settings: {width: 900, height: 640, dpi: 110}
+axis_settings: {x_label: Creep time, x_unit: h, y_label: Creep strain, y_unit: "%", x_range: [0, 950]}
+curve_settings: {num_curves: 2, curve_shape: near_linear, points_per_curve: 120, noise_level: 0.04}
+style_settings: {line_style: dashed, line_width: 1.2, marker: square}
+legend_settings: {legend_position: none}
+grid_settings: {grid: true}
+default_parameters: {num_curves: 2, curve_shape: near_linear, line_style: dashed, marker: square, legend_position: none, grid: true}
+probability_distributions:
+  num_curves: {"1": 0.2, "2": 0.5, "3": 0.3}
+  curve_shape: {near_linear: 0.65, primary_obvious: 0.25, accelerated_obvious: 0.1}
+  line_style: {solid: 0.2, dashed: 0.55, dotted: 0.25}
+  marker: {none: 0.3, square: 0.45, circle: 0.25}
+  legend_position: {none: 0.7, inside_upper_right: 0.2, outside_right: 0.1}
+  grid: {true: 0.85, false: 0.15}

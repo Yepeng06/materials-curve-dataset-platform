@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type PreviewItem = {
   image_path: string
@@ -7,7 +7,16 @@ type PreviewItem = {
   annotation: Record<string, unknown>
 }
 
+type TemplateItem = {
+  template_id: string
+  template_name: string
+  description: string
+  file_name: string
+}
+
 type PreviewParams = {
+  mode: 'explicit' | 'probabilistic'
+  template_id: string
   preview_count: number
   seed: number
   grid: boolean
@@ -26,6 +35,8 @@ type PreviewParams = {
 }
 
 const defaults: PreviewParams = {
+  mode: 'explicit',
+  template_id: 'real_mainstream',
   preview_count: 3,
   seed: 20260520,
   grid: false,
@@ -45,9 +56,20 @@ const defaults: PreviewParams = {
 
 function App() {
   const [items, setItems] = useState<PreviewItem[]>([])
+  const [templates, setTemplates] = useState<TemplateItem[]>([])
   const [params, setParams] = useState<PreviewParams>(defaults)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/templates')
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        setTemplates(data.items ?? [])
+      })
+      .catch((e) => setError(`模板列表加载失败: ${(e as Error).message}`))
+  }, [])
 
   const generatePreview = async () => {
     setLoading(true)
@@ -71,24 +93,25 @@ function App() {
   return (
     <main style={{ margin: '2rem auto', maxWidth: 1100, fontFamily: 'Arial, sans-serif', lineHeight: 1.6 }}>
       <h1>Materials Curve Dataset Platform</h1>
-      <p>V0 第三步：前端参数面板 + /preview 参数传递。</p>
+      <p>V0 第四步：模板系统 + 概率采样模式。</p>
 
       <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
         <h2>参数面板</h2>
+        <h3>0. 模板与生成模式</h3>
+        <label>template: <select value={params.template_id} onChange={(e) => setParams({ ...params, template_id: e.target.value })}>{templates.map((t) => <option key={t.template_id} value={t.template_id}>{t.template_name}</option>)}</select></label>{' '}
+        <label>mode: <select value={params.mode} onChange={(e) => setParams({ ...params, mode: e.target.value as 'explicit' | 'probabilistic' })}><option value="explicit">explicit</option><option value="probabilistic">probabilistic</option></select></label>
+        {params.mode === 'probabilistic' && <p style={{ color: '#9a6700' }}>当前将根据模板概率分布采样，部分手动参数不会生效。</p>}
+
         <h3>A. 图像与预览设置</h3>
         <label>preview_count (3-6): <input type="number" min={3} max={6} value={params.preview_count} onChange={(e) => setParams({ ...params, preview_count: Number(e.target.value) })} /></label>{' '}
         <label>seed: <input type="number" value={params.seed} onChange={(e) => setParams({ ...params, seed: Number(e.target.value) })} /></label>{' '}
         <label>grid: <input type="checkbox" checked={params.grid} onChange={(e) => setParams({ ...params, grid: e.target.checked })} /></label>
 
         <h3>B. 坐标轴设置</h3>
-        <label>x_label: <input list="x-label-list" value={params.x_label} onChange={(e) => setParams({ ...params, x_label: e.target.value })} /></label>
-        <datalist id="x-label-list"><option value="Time" /><option value="Creep time" /><option value="Duration time" /><option value="t" /></datalist>{' '}
-        <label>x_unit: <input list="x-unit-list" value={params.x_unit} onChange={(e) => setParams({ ...params, x_unit: e.target.value })} /></label>
-        <datalist id="x-unit-list"><option value="h" /><option value="hr" /><option value="hour" /><option value="day" /><option value="min" /><option value="s" /><option value="none" /></datalist>{' '}
-        <label>y_label: <input list="y-label-list" value={params.y_label} onChange={(e) => setParams({ ...params, y_label: e.target.value })} /></label>
-        <datalist id="y-label-list"><option value="Strain" /><option value="Creep strain" /><option value="Residual strain" /><option value="ε" /></datalist>{' '}
-        <label>y_unit: <input list="y-unit-list" value={params.y_unit} onChange={(e) => setParams({ ...params, y_unit: e.target.value })} /></label>
-        <datalist id="y-unit-list"><option value="%" /><option value="strain" /><option value="microstrain" /><option value="none" /></datalist>
+        <label>x_label: <input value={params.x_label} onChange={(e) => setParams({ ...params, x_label: e.target.value })} /></label>{' '}
+        <label>x_unit: <input value={params.x_unit} onChange={(e) => setParams({ ...params, x_unit: e.target.value })} /></label>{' '}
+        <label>y_label: <input value={params.y_label} onChange={(e) => setParams({ ...params, y_label: e.target.value })} /></label>{' '}
+        <label>y_unit: <input value={params.y_unit} onChange={(e) => setParams({ ...params, y_unit: e.target.value })} /></label>
 
         <h3>C. 曲线设置</h3>
         <label>num_curves (1-4): <input type="number" min={1} max={4} value={params.num_curves} onChange={(e) => setParams({ ...params, num_curves: Number(e.target.value) })} /></label>{' '}
@@ -105,9 +128,7 @@ function App() {
         <label>legend_position: <select value={params.legend_position} onChange={(e) => setParams({ ...params, legend_position: e.target.value })}><option value="none">none</option><option value="inside_upper_right">inside_upper_right</option><option value="inside_upper_left">inside_upper_left</option><option value="inside_lower_right">inside_lower_right</option><option value="outside_right">outside_right</option></select></label>
       </section>
 
-      <button onClick={generatePreview} disabled={loading} style={{ marginTop: 16 }}>
-        {loading ? '生成中...' : '生成预览图'}
-      </button>
+      <button onClick={generatePreview} disabled={loading} style={{ marginTop: 16 }}>{loading ? '生成中...' : '生成预览图'}</button>
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
       <section style={{ marginTop: '1.5rem' }}>
         {items.map((item, idx) => (
@@ -117,12 +138,7 @@ function App() {
             <p><strong>image_path:</strong> {item.image_path}</p>
             <p><strong>annotation_path:</strong> {item.annotation_path}</p>
             <p><strong>csv_paths:</strong> {item.csv_paths.join(', ')}</p>
-            <details>
-              <summary>查看 MCG-JSON</summary>
-              <pre style={{ whiteSpace: 'pre-wrap', background: '#f8f8f8', padding: 10 }}>
-                {JSON.stringify(item.annotation, null, 2)}
-              </pre>
-            </details>
+            <details><summary>查看 MCG-JSON</summary><pre style={{ whiteSpace: 'pre-wrap', background: '#f8f8f8', padding: 10 }}>{JSON.stringify(item.annotation, null, 2)}</pre></details>
           </article>
         ))}
       </section>

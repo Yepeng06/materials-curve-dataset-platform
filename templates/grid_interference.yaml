@@ -1,0 +1,16 @@
+template_name: Grid Interference
+description: Heavy-grid template for robust detection.
+image_settings: {width: 960, height: 720, dpi: 130}
+axis_settings: {x_label: t, x_unit: h, y_label: ε, y_unit: "%", x_range: [0, 1000]}
+curve_settings: {num_curves: 3, curve_shape: accelerated_obvious, points_per_curve: 160, noise_level: 0.03}
+style_settings: {line_style: dashdot, line_width: 1.5, marker: none}
+legend_settings: {legend_position: inside_lower_right}
+grid_settings: {grid: true}
+default_parameters: {num_curves: 3, curve_shape: accelerated_obvious, line_style: dashdot, marker: none, legend_position: inside_lower_right, grid: true}
+probability_distributions:
+  num_curves: {"2": 0.2, "3": 0.55, "4": 0.25}
+  curve_shape: {near_linear: 0.15, primary_obvious: 0.25, accelerated_obvious: 0.6}
+  line_style: {solid: 0.25, dashed: 0.25, dashdot: 0.5}
+  marker: {none: 0.85, circle: 0.1, triangle: 0.05}
+  legend_position: {inside_lower_right: 0.6, inside_upper_right: 0.25, outside_right: 0.15}
+  grid: {true: 0.9, false: 0.1}
