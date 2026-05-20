@@ -1,18 +1,16 @@
-template_name: real_mainstream
-image:
-  width: 1024
-  height: 768
-  dpi: 150
-axis:
-  x_label: Creep time
-  x_unit: h
-  y_label: Creep strain
-  y_unit: "%"
-curves:
-  num_curves: 3
-  shape_type: near_linear
-style:
-  line_style: solid
-  marker: none
-  legend_position: inside_upper_right
-  grid: false
+template_name: Real Mainstream
+description: Mainstream paper-like creep chart style.
+image_settings: {width: 1024, height: 768, dpi: 150}
+axis_settings: {x_label: Creep time, x_unit: h, y_label: Creep strain, y_unit: "%", x_range: [0, 1000]}
+curve_settings: {num_curves: 3, curve_shape: near_linear, points_per_curve: 160, noise_level: 0.02}
+style_settings: {line_style: solid, line_width: 1.5, marker: none}
+legend_settings: {legend_position: inside_upper_right}
+grid_settings: {grid: false}
+default_parameters: {preview_count: 3, seed: 20260520, num_curves: 3, curve_shape: near_linear, line_style: solid, marker: none, legend_position: inside_upper_right, grid: false}
+probability_distributions:
+  num_curves: {"2": 0.2, "3": 0.6, "4": 0.2}
+  curve_shape: {near_linear: 0.6, primary_obvious: 0.25, accelerated_obvious: 0.15}
+  line_style: {solid: 0.8, dashed: 0.15, dotted: 0.05}
+  marker: {none: 0.8, circle: 0.1, square: 0.1}
+  legend_position: {inside_upper_right: 0.7, inside_upper_left: 0.15, outside_right: 0.15}
+  grid: {false: 0.85, true: 0.15}

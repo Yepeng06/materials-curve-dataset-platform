@@ -1,0 +1,16 @@
+template_name: Three Stage Creep
+description: Emphasizes primary-secondary-tertiary creep trend.
+image_settings: {width: 1080, height: 760, dpi: 160}
+axis_settings: {x_label: Creep time, x_unit: h, y_label: Strain, y_unit: "%", x_range: [0, 1300]}
+curve_settings: {num_curves: 3, curve_shape: primary_obvious, points_per_curve: 200, noise_level: 0.015}
+style_settings: {line_style: solid, line_width: 1.7, marker: triangle}
+legend_settings: {legend_position: inside_upper_left}
+grid_settings: {grid: false}
+default_parameters: {num_curves: 3, curve_shape: primary_obvious, line_style: solid, marker: triangle, legend_position: inside_upper_left, grid: false}
+probability_distributions:
+  num_curves: {"2": 0.25, "3": 0.55, "4": 0.2}
+  curve_shape: {near_linear: 0.15, primary_obvious: 0.45, accelerated_obvious: 0.4}
+  line_style: {solid: 0.7, dashed: 0.2, dashdot: 0.1}
+  marker: {triangle: 0.5, circle: 0.25, none: 0.25}
+  legend_position: {inside_upper_left: 0.5, inside_upper_right: 0.3, outside_right: 0.2}
+  grid: {false: 0.6, true: 0.4}

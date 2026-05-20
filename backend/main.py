@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from fastapi import FastAPI
+import yaml
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -16,7 +17,7 @@ from generator.quality_check import run_quality_check
 from generator.renderer import render_preview
 from generator.sampler import sample_parameters
 
-app = FastAPI(title="Materials Curve Dataset Platform API", version="0.3.0")
+app = FastAPI(title="Materials Curve Dataset Platform API", version="0.4.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,10 +26,14 @@ app.add_middleware(
 )
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+TEMPLATES_DIR = ROOT_DIR / "templates"
 app.mount("/examples", StaticFiles(directory=ROOT_DIR / "examples"), name="examples")
 
 
 class PreviewRequest(BaseModel):
+    mode: str = "explicit"
+    template_id: str = "real_mainstream"
+
     preview_count: int = 3
     seed: int = 20260520
     grid: bool = False
@@ -51,14 +56,56 @@ class PreviewRequest(BaseModel):
     x_range: list[float] = Field(default_factory=lambda: [0, 1000])
 
 
+def _load_template(template_id: str) -> dict[str, Any]:
+    template_path = TEMPLATES_DIR / f"{template_id}.yaml"
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template not found: {template_id}")
+
+    try:
+        data = yaml.safe_load(template_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise HTTPException(status_code=400, detail=f"Template YAML format error: {template_path.name}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail=f"Template format must be object: {template_path.name}")
+    return data
+
+
 @app.get('/health')
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "materials-curve-backend"}
 
 
+@app.get('/templates')
+def list_templates() -> dict[str, Any]:
+    if not TEMPLATES_DIR.exists():
+        raise HTTPException(status_code=500, detail="Templates directory is missing")
+
+    items: list[dict[str, str]] = []
+    for path in sorted(TEMPLATES_DIR.glob("*.yaml")):
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("YAML root must be object")
+            template_id = path.stem
+            items.append(
+                {
+                    "template_id": template_id,
+                    "template_name": str(data.get("template_name", template_id)),
+                    "description": str(data.get("description", "")),
+                    "file_name": path.name,
+                }
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid template file {path.name}: {exc}") from exc
+
+    return {"status": "ok", "count": len(items), "items": items}
+
+
 @app.post('/preview')
 def preview(req: PreviewRequest) -> dict[str, Any]:
-    params = sample_parameters("explicit", req.model_dump())
+    template_data = _load_template(req.template_id)
+    params_base = req.model_dump()
     root = ROOT_DIR
     base = root / "examples" / "previews"
     images_dir = base / "images"
@@ -66,7 +113,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
     ann_dir = base / "annotations"
 
     items = []
-    for i in range(params["preview_count"]):
+    for i in range(max(3, min(req.preview_count, 6))):
+        params = sample_parameters(req.mode, params_base, template_data=template_data, sample_index=i)
         rng = np.random.default_rng(params["seed"] + i)
         curves = []
         csv_paths = []
@@ -108,7 +156,14 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
 
         annotation = build_mcg_json(
             {
-                "dataset_info": {"name": "preview", "version": "v0-step3"},
+                "dataset_info": {
+                    "name": "preview",
+                    "version": "v0-step4",
+                    "mode": params["mode"],
+                    "template_id": req.template_id,
+                    "template_name": template_data.get("template_name", req.template_id),
+                    "seed": params["seed"],
+                },
                 "image": {
                     "image_path": str(image_path.relative_to(root)),
                     "width": render_info["image_width"],
@@ -130,6 +185,11 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "points_per_curve": params["points_per_curve"],
                     "noise_level": params["noise_level"],
                     "seed": params["seed"],
+                    "mode": params["mode"],
+                    "template_id": req.template_id,
+                    "template_name": template_data.get("template_name", req.template_id),
+                    "sampled_parameters": params.get("sampled_parameters", {}),
+                    "actual_parameters": params.get("actual_parameters", {}),
                 },
                 "legend": {"position": params["legend_position"]},
                 "curves": curves,
