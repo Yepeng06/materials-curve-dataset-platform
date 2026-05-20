@@ -16,7 +16,7 @@ from generator.quality_check import run_quality_check
 from generator.renderer import render_preview
 from generator.sampler import sample_parameters
 
-app = FastAPI(title="Materials Curve Dataset Platform API", version="0.2.0")
+app = FastAPI(title="Materials Curve Dataset Platform API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,18 +30,25 @@ app.mount("/examples", StaticFiles(directory=ROOT_DIR / "examples"), name="examp
 
 class PreviewRequest(BaseModel):
     preview_count: int = 3
-    num_curves: int = 3
+    seed: int = 20260520
+    grid: bool = False
+
     x_label: str = "Creep time"
     x_unit: str = "h"
     y_label: str = "Creep strain"
     y_unit: str = "%"
-    x_range: list[float] = Field(default_factory=lambda: [0, 1000])
+
+    num_curves: int = 3
     curve_shape: str = "near_linear"
+    points_per_curve: int = 160
+    noise_level: float = 0.02
+
     line_style: str = "solid"
+    line_width: float = 1.5
     marker: str = "none"
+
     legend_position: str = "inside_upper_right"
-    grid: bool = False
-    seed: int = 20260520
+    x_range: list[float] = Field(default_factory=lambda: [0, 1000])
 
 
 @app.get('/health')
@@ -69,7 +76,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                 curve_shape=params["curve_shape"],
                 x_min=float(params["x_range"][0]),
                 x_max=float(params["x_range"][1]),
-                num_points=params["num_points"],
+                num_points=params["points_per_curve"],
+                noise_level=params["noise_level"],
                 rng=rng,
             )
             csv_path = csv_dir / f"preview_{i+1}_curve_{curve_idx+1}.csv"
@@ -81,7 +89,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "label": f"Curve {curve_idx+1}",
                     "shape_type": params["curve_shape"],
                     "line_style": params["line_style"],
-                    "line_width": 1.8,
+                    "line_width": params["line_width"],
                     "marker": params["marker"],
                     "data_points": data_points,
                     "csv_path": str(csv_path.relative_to(root)),
@@ -100,7 +108,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
 
         annotation = build_mcg_json(
             {
-                "dataset_info": {"name": "preview", "version": "v0-step2"},
+                "dataset_info": {"name": "preview", "version": "v0-step3"},
                 "image": {
                     "image_path": str(image_path.relative_to(root)),
                     "width": render_info["image_width"],
@@ -112,7 +120,17 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "y_label": params["y_label"], "y_unit": params["y_unit"],
                     "x_range": params["x_range"],
                 },
-                "style": {"line_style": params["line_style"], "marker": params["marker"], "grid": params["grid"]},
+                "style": {
+                    "grid": params["grid"],
+                    "line_style": params["line_style"],
+                    "line_width": params["line_width"],
+                    "marker": params["marker"],
+                    "legend_position": params["legend_position"],
+                    "curve_shape": params["curve_shape"],
+                    "points_per_curve": params["points_per_curve"],
+                    "noise_level": params["noise_level"],
+                    "seed": params["seed"],
+                },
                 "legend": {"position": params["legend_position"]},
                 "curves": curves,
                 "quality_check": {},

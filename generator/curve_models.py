@@ -19,6 +19,7 @@ def generate_curve_data(
     x_min: float,
     x_max: float,
     num_points: int,
+    noise_level: float,
     rng: np.random.Generator,
 ) -> DataPoints:
     """Generate monotonic creep-like curve points for a supported shape."""
@@ -32,7 +33,7 @@ def generate_curve_data(
     else:  # near_linear default
         y = 0.03 + 0.35 * t + 0.03 * np.power(t, 1.8)
 
-    noise = rng.normal(loc=0.0, scale=0.003, size=num_points)
+    noise = rng.normal(loc=0.0, scale=noise_level, size=num_points)
     y = _ensure_monotonic(y + noise)
 
     return [[float(xv), float(yv)] for xv, yv in zip(x, y)]
