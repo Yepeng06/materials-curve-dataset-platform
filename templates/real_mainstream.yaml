@@ -1,0 +1,18 @@
+template_name: real_mainstream
+image:
+  width: 1024
+  height: 768
+  dpi: 150
+axis:
+  x_label: Creep time
+  x_unit: h
+  y_label: Creep strain
+  y_unit: "%"
+curves:
+  num_curves: 3
+  shape_type: near_linear
+style:
+  line_style: solid
+  marker: none
+  legend_position: inside_upper_right
+  grid: false
