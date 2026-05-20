@@ -16,6 +16,7 @@ from generator.curve_models import generate_curve_data
 from generator.quality_check import run_quality_check
 from generator.renderer import render_preview
 from generator.sampler import sample_parameters
+from generator.dataset_generator import generate_dataset
 
 app = FastAPI(title="Materials Curve Dataset Platform API", version="0.4.0")
 app.add_middleware(
@@ -28,6 +29,36 @@ app.add_middleware(
 ROOT_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES_DIR = ROOT_DIR / "templates"
 app.mount("/examples", StaticFiles(directory=ROOT_DIR / "examples"), name="examples")
+
+
+
+
+class GenerateRequest(BaseModel):
+    dataset_name: str = "creep_synth"
+    version: str = "v0.1"
+    total_count: int = 30
+    mode: str = "explicit"
+    template_id: str = "real_mainstream"
+    seed: int = 20260520
+
+    split: dict[str, float] = Field(default_factory=lambda: {"train": 0.7, "val": 0.2, "test": 0.1})
+
+    grid: bool = False
+    x_label: str = "Creep time"
+    x_unit: str = "h"
+    y_label: str = "Creep strain"
+    y_unit: str = "%"
+
+    num_curves: int = 3
+    curve_shape: str = "near_linear"
+    points_per_curve: int = 160
+    noise_level: float = 0.02
+
+    line_style: str = "solid"
+    line_width: float = 1.5
+    marker: str = "none"
+    legend_position: str = "inside_upper_right"
+    x_range: list[float] = Field(default_factory=lambda: [0, 1000])
 
 
 class PreviewRequest(BaseModel):
@@ -211,3 +242,28 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
         )
 
     return {"status": "ok", "preview_count": len(items), "items": items}
+
+
+@app.post('/generate')
+def generate(req: GenerateRequest) -> dict[str, Any]:
+    if req.mode not in {"explicit", "probabilistic"}:
+        raise HTTPException(status_code=400, detail="mode must be explicit or probabilistic")
+
+    if req.total_count <= 0:
+        raise HTTPException(status_code=400, detail="total_count must be positive")
+
+    split_total = req.split.get("train", 0) + req.split.get("val", 0) + req.split.get("test", 0)
+    if abs(split_total - 1.0) > 1e-6:
+        raise HTTPException(status_code=400, detail="split ratios must sum to 1.0")
+
+    template_data = _load_template(req.template_id)
+    result = generate_dataset(ROOT_DIR, req.model_dump(), template_data)
+    return {
+        "status": "ok",
+        "dataset_id": result.dataset_id,
+        "dataset_path": result.dataset_path,
+        "total_count": result.total_count,
+        "split_counts": result.split_counts,
+        "summary_path": result.summary_path,
+        "quality_report_path": result.quality_report_path,
+    }
