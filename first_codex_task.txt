@@ -1,0 +1,21 @@
+请根据 README.md 和 AGENTS.md，为本项目搭建 V0 初始代码结构。
+
+要求：
+1. 创建 frontend、backend、generator、templates、docs、examples、tests 目录。
+2. backend 使用 FastAPI，提供 GET /health 接口。
+3. frontend 使用 React + Vite + TypeScript，创建一个基础首页，显示项目名称和简要说明。
+4. generator 中创建基础模块文件：
+   - curve_models.py
+   - style_models.py
+   - sampler.py
+   - renderer.py
+   - annotation_schema.py
+   - annotation_exporter.py
+   - quality_check.py
+   - degradation.py
+   - utils.py
+5. templates 中创建 real_mainstream.yaml，占位写入基本参数。
+6. 添加 backend/requirements.txt。
+7. 添加基本运行说明。
+8. 当前任务只做项目骨架，不需要实现完整生成逻辑。
+9. 完成后说明如何启动 backend 和 frontend。
