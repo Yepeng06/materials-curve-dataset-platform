@@ -1,12 +1,67 @@
-"""Renderer placeholder for V0."""
+"""Matplotlib renderer for preview curve charts."""
 
+from __future__ import annotations
+
+from pathlib import Path
 from typing import Any
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-def render_preview(sample: dict[str, Any]) -> dict[str, Any]:
-    """Return placeholder render metadata for V0 scaffolding."""
+
+def _legend_loc(position: str) -> str:
+    mapping = {
+        "inside_upper_right": "upper right",
+        "inside_upper_left": "upper left",
+        "inside_lower_right": "lower right",
+        "inside_lower_left": "lower left",
+    }
+    return mapping.get(position, "upper right")
+
+
+def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
+    """Render chart and return image/plot/curve pixel metadata."""
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=120)
+    ax.set_title(sample["title"])
+    ax.set_xlabel(f"{sample['x_label']} ({sample['x_unit']})")
+    ax.set_ylabel(f"{sample['y_label']} ({sample['y_unit']})")
+    ax.grid(bool(sample["grid"]))
+
+    curve_pixels: list[list[list[float]]] = []
+    curve_bboxes: list[list[float]] = []
+
+    for idx, curve in enumerate(sample["curves"]):
+        data_points = curve["data_points"]
+        x = [p[0] for p in data_points]
+        y = [p[1] for p in data_points]
+        marker = None if sample["marker"] == "none" else sample["marker"]
+        line, = ax.plot(x, y, linestyle=sample["line_style"], marker=marker, linewidth=1.8, label=f"Curve {idx+1}")
+        disp = ax.transData.transform(list(zip(x, y)))
+        pixels = [[float(px), float(py)] for px, py in disp]
+        curve_pixels.append(pixels)
+        xs = [p[0] for p in pixels]
+        ys = [p[1] for p in pixels]
+        curve_bboxes.append([min(xs), min(ys), max(xs), max(ys)])
+        curve["line_color"] = line.get_color()
+
+    ax.legend(loc=_legend_loc(sample["legend_position"]))
+    fig.tight_layout()
+    fig.canvas.draw()
+
+    renderer = fig.canvas.get_renderer()
+    plot_bb = ax.get_window_extent(renderer=renderer)
+    width, height = fig.canvas.get_width_height()
+
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(image_path, format="png")
+    plt.close(fig)
+
     return {
-        "image_path": "examples/preview_placeholder.png",
-        "plot_area_bbox": [120, 80, 900, 650],
-        "pixel_points": [],
+        "image_path": str(image_path),
+        "image_width": int(width),
+        "image_height": int(height),
+        "plot_area_bbox_xyxy": [float(plot_bb.x0), float(plot_bb.y0), float(plot_bb.x1), float(plot_bb.y1)],
+        "curve_pixel_points": curve_pixels,
+        "curve_bbox_xyxy": curve_bboxes,
     }
