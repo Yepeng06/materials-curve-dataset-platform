@@ -1,154 +1,121 @@
-# V0 运行说明（第四步：模板系统与概率采样）
+# V0 运行与验收说明
 
-## 1) 启动 backend (FastAPI)
+## 1. 安装依赖
 
+### Backend
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-cd ..
-uvicorn backend.main:app --reload --port 8000
+pip install -r backend/requirements.txt
 ```
 
-## 2) 启动 frontend
-
+### Frontend
 ```bash
 cd frontend
 npm install
+cd ..
+```
+
+## 2. 启动服务
+
+### 启动 backend
+```bash
+uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 启动 frontend
+```bash
+cd frontend
 npm run dev
 ```
+默认前端访问：`http://127.0.0.1:5173`
 
-## 3) 模板选择与模式说明
+## 3. 核心接口验收
 
-- 模板文件目录：`templates/`
-- 前端会在页面加载时调用 `GET /templates` 并填充模板下拉框。
-- 生成模式：
-  - `explicit`：使用前端手动参数（兼容旧模式）。
-  - `probabilistic`：根据模板 `probability_distributions` 采样；部分手动参数会被模板采样覆盖。
-
-## 4) GET /templates
-
-返回格式：
-
-```json
-{
-  "status": "ok",
-  "count": 7,
-  "items": [
-    {
-      "template_id": "real_mainstream",
-      "template_name": "Real Mainstream",
-      "description": "Mainstream paper-like creep chart style.",
-      "file_name": "real_mainstream.yaml"
-    }
-  ]
-}
+### GET /health
+```bash
+curl http://127.0.0.1:8000/health
 ```
 
-## 5) POST /preview 新字段
+### GET /templates
+```bash
+curl http://127.0.0.1:8000/templates
+```
 
-新增请求字段：
-
-- `mode`: `explicit` | `probabilistic`（默认 `explicit`）
-- `template_id`: 模板 ID（默认 `real_mainstream`）
-
-### explicit 示例
-
+### POST /preview（explicit）
 ```bash
 curl -X POST http://127.0.0.1:8000/preview \
   -H 'Content-Type: application/json' \
-  -d '{
-    "mode":"explicit",
-    "template_id":"real_mainstream",
-    "preview_count":3,
-    "num_curves":3,
-    "curve_shape":"near_linear",
-    "seed":20260520
-  }'
+  -d '{"mode":"explicit","template_id":"real_mainstream","preview_count":3,"seed":20260520}'
 ```
 
-### probabilistic 示例
-
+### POST /preview（probabilistic）
 ```bash
 curl -X POST http://127.0.0.1:8000/preview \
   -H 'Content-Type: application/json' \
-  -d '{
-    "mode":"probabilistic",
-    "template_id":"real_mainstream",
-    "preview_count":6,
-    "seed":20260520
-  }'
+  -d '{"mode":"probabilistic","template_id":"real_mainstream","preview_count":6,"seed":20260520}'
 ```
 
-## 6) MCG-JSON 追踪字段
-
-每张预览图的 MCG-JSON 中会记录：
-
-- `mode`
-- `template_id`
-- `template_name`
-- `seed`
-- `sampled_parameters`
-- `actual_parameters`
-
-用于追踪每张图实际生成参数与复现。
-
-## 7) POST /generate（批量生成）
-
+### POST /generate（total_count=6）
 ```bash
 curl -X POST http://127.0.0.1:8000/generate \
   -H 'Content-Type: application/json' \
   -d '{
-    "dataset_name": "creep_synth",
-    "version": "v0.1",
-    "total_count": 6,
-    "mode": "probabilistic",
-    "template_id": "real_mainstream",
-    "seed": 20260520,
-    "split": {"train": 0.7, "val": 0.2, "test": 0.1}
+    "dataset_name":"creep_synth",
+    "version":"v0.1",
+    "total_count":6,
+    "mode":"probabilistic",
+    "template_id":"real_mainstream",
+    "seed":20260520,
+    "split":{"train":0.7,"val":0.2,"test":0.1}
   }'
 ```
 
-返回示例：
+## 4. 输出路径
 
-```json
-{
-  "status": "ok",
-  "dataset_id": "creep_synth_v0.1_20260520_001",
-  "dataset_path": "datasets/creep_synth_v0.1_20260520_001",
-  "total_count": 6,
-  "split_counts": {"train": 4, "val": 1, "test": 1},
-  "summary_path": "datasets/creep_synth_v0.1_20260520_001/summary.json",
-  "quality_report_path": "datasets/creep_synth_v0.1_20260520_001/quality_report.json"
-}
+### 预览输出
+- `examples/previews/images/`
+- `examples/previews/csv/`
+- `examples/previews/annotations/`
+
+### 批量数据集输出
+- `datasets/{dataset_id}/images/train|val|test`
+- `datasets/{dataset_id}/annotations/train|val|test`
+- `datasets/{dataset_id}/csv/train|val|test`
+- `datasets/{dataset_id}/config.yaml`
+- `datasets/{dataset_id}/distribution.yaml`
+- `datasets/{dataset_id}/seed.json`
+- `datasets/{dataset_id}/summary.json`
+- `datasets/{dataset_id}/quality_report.json`
+- `datasets/{dataset_id}/README.md`
+
+## 5. 前端验收要点
+
+- 模板列表可加载（`GET /templates`）。
+- 可切换 `explicit/probabilistic`。
+- 可触发 `/preview` 并显示 `image_path/annotation_path/csv_paths`。
+- 可触发 `/generate` 并显示数据集结果。
+- loading 与错误信息可见。
+
+## 6. 一键烟雾测试脚本
+
+```bash
+python scripts/v0_smoke_test.py
 ```
 
-## 8) 数据集版本目录结构
+脚本检查：
+- preview explicit/probabilistic 可用；
+- generate total_count=6 可用；
+- 关键目录和文件存在；
+- 同 seed 采样一致、不同 seed 有变化。
 
-```text
-datasets/{dataset_name}_{version}_{YYYYMMDD}_{seq}/
-  images/train|val|test/
-  annotations/train|val|test/
-  csv/train|val|test/
-  config.yaml
-  distribution.yaml
-  seed.json
-  summary.json
-  quality_report.json
-  README.md
-```
+## 7. 常见问题
 
-文件作用：
-
-- `config.yaml`：保存本次请求参数。
-- `distribution.yaml`：保存模板概率分布和模式。
-- `seed.json`：保存全局种子和每个 sample_id 的 sample_seed。
-- `summary.json`：保存总量、split 数量、模式与分布统计。
-- `quality_report.json`：保存通过/警告/失败统计与样本 warning。
-
-## 9) 前端批量生成区域
-
-- 页面新增“批量生成数据集”区域。
-- 参数：`dataset_name`、`version`、`total_count`、`mode`、`template_id`、`seed`、`train/val/test ratio`。
-- 点击按钮后调用 `POST /generate`，返回数据集 ID、路径、split 统计与摘要文件路径。
+1. **backend 启动时报目录不存在**
+   - 当前实现会自动创建 `examples/previews/*` 与 `datasets/`，无需手动建目录。
+2. **前端请求失败**
+   - 检查 backend 是否运行在 `127.0.0.1:8000`。
+3. **split 报错**
+   - `train+val+test` 必须等于 `1.0`。
+4. **模板不存在**
+   - 使用 `GET /templates` 查看可用 `template_id`。

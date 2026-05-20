@@ -45,7 +45,9 @@ def _split_counts(total_count: int, split: dict[str, float]) -> dict[str, int]:
 def _build_dataset_id(root: Path, dataset_name: str, version: str) -> str:
     date_part = datetime.utcnow().strftime("%Y%m%d")
     prefix = f"{dataset_name}_{version}_{date_part}_"
-    existing = [p.name for p in (root / "datasets").glob(f"{prefix}*") if p.is_dir()]
+    datasets_dir = root / "datasets"
+    datasets_dir.mkdir(parents=True, exist_ok=True)
+    existing = [p.name for p in datasets_dir.glob(f"{prefix}*") if p.is_dir()]
     seq = 1
     if existing:
         seq = max(int(name.rsplit("_", 1)[-1]) for name in existing if name.rsplit("_", 1)[-1].isdigit()) + 1

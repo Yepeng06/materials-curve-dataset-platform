@@ -28,8 +28,19 @@ app.add_middleware(
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES_DIR = ROOT_DIR / "templates"
-app.mount("/examples", StaticFiles(directory=ROOT_DIR / "examples"), name="examples")
+EXAMPLES_PREVIEW_DIR = ROOT_DIR / "examples" / "previews"
 
+# Ensure runtime directories always exist so startup and generation do not fail.
+for path in [
+    ROOT_DIR / "examples",
+    EXAMPLES_PREVIEW_DIR / "images",
+    EXAMPLES_PREVIEW_DIR / "csv",
+    EXAMPLES_PREVIEW_DIR / "annotations",
+    ROOT_DIR / "datasets",
+]:
+    path.mkdir(parents=True, exist_ok=True)
+
+app.mount("/examples", StaticFiles(directory=ROOT_DIR / "examples"), name="examples")
 
 
 
@@ -135,6 +146,9 @@ def list_templates() -> dict[str, Any]:
 
 @app.post('/preview')
 def preview(req: PreviewRequest) -> dict[str, Any]:
+    if req.mode not in {"explicit", "probabilistic"}:
+        raise HTTPException(status_code=400, detail="mode must be explicit or probabilistic")
+
     template_data = _load_template(req.template_id)
     params_base = req.model_dump()
     root = ROOT_DIR
@@ -142,6 +156,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
     images_dir = base / "images"
     csv_dir = base / "csv"
     ann_dir = base / "annotations"
+    for d in (images_dir, csv_dir, ann_dir):
+        d.mkdir(parents=True, exist_ok=True)
 
     items = []
     for i in range(max(3, min(req.preview_count, 6))):
