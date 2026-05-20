@@ -10,12 +10,18 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+MARKER_MAP = {
+    "triangle": "^",
+    "circle": "o",
+    "square": "s",
+}
+
+
 def _legend_loc(position: str) -> str:
     mapping = {
         "inside_upper_right": "upper right",
         "inside_upper_left": "upper left",
         "inside_lower_right": "lower right",
-        "inside_lower_left": "lower left",
     }
     return mapping.get(position, "upper right")
 
@@ -24,8 +30,10 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
     """Render chart and return image/plot/curve pixel metadata."""
     fig, ax = plt.subplots(figsize=(8, 5), dpi=120)
     ax.set_title(sample["title"])
-    ax.set_xlabel(f"{sample['x_label']} ({sample['x_unit']})")
-    ax.set_ylabel(f"{sample['y_label']} ({sample['y_unit']})")
+    x_unit = "" if sample["x_unit"] == "none" else sample["x_unit"]
+    y_unit = "" if sample["y_unit"] == "none" else sample["y_unit"]
+    ax.set_xlabel(f"{sample['x_label']}" if not x_unit else f"{sample['x_label']} ({x_unit})")
+    ax.set_ylabel(f"{sample['y_label']}" if not y_unit else f"{sample['y_label']} ({y_unit})")
     ax.grid(bool(sample["grid"]))
 
     curve_pixels: list[list[list[float]]] = []
@@ -35,8 +43,16 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
         data_points = curve["data_points"]
         x = [p[0] for p in data_points]
         y = [p[1] for p in data_points]
-        marker = None if sample["marker"] == "none" else sample["marker"]
-        line, = ax.plot(x, y, linestyle=sample["line_style"], marker=marker, linewidth=1.8, label=f"Curve {idx+1}")
+        marker_key = sample["marker"]
+        marker = None if marker_key == "none" else MARKER_MAP.get(marker_key, marker_key)
+        line, = ax.plot(
+            x,
+            y,
+            linestyle=sample["line_style"],
+            marker=marker,
+            linewidth=sample["line_width"],
+            label=f"Curve {idx+1}",
+        )
         disp = ax.transData.transform(list(zip(x, y)))
         pixels = [[float(px), float(py)] for px, py in disp]
         curve_pixels.append(pixels)
@@ -45,8 +61,15 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
         curve_bboxes.append([min(xs), min(ys), max(xs), max(ys)])
         curve["line_color"] = line.get_color()
 
-    ax.legend(loc=_legend_loc(sample["legend_position"]))
-    fig.tight_layout()
+    if sample["legend_position"] != "none":
+        if sample["legend_position"] == "outside_right":
+            ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0.0)
+            fig.tight_layout(rect=(0, 0, 0.86, 1))
+        else:
+            ax.legend(loc=_legend_loc(sample["legend_position"]))
+            fig.tight_layout()
+    else:
+        fig.tight_layout()
     fig.canvas.draw()
 
     renderer = fig.canvas.get_renderer()
