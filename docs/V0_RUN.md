@@ -93,3 +93,62 @@ curl -X POST http://127.0.0.1:8000/preview \
 - `actual_parameters`
 
 用于追踪每张图实际生成参数与复现。
+
+## 7) POST /generate（批量生成）
+
+```bash
+curl -X POST http://127.0.0.1:8000/generate \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "dataset_name": "creep_synth",
+    "version": "v0.1",
+    "total_count": 6,
+    "mode": "probabilistic",
+    "template_id": "real_mainstream",
+    "seed": 20260520,
+    "split": {"train": 0.7, "val": 0.2, "test": 0.1}
+  }'
+```
+
+返回示例：
+
+```json
+{
+  "status": "ok",
+  "dataset_id": "creep_synth_v0.1_20260520_001",
+  "dataset_path": "datasets/creep_synth_v0.1_20260520_001",
+  "total_count": 6,
+  "split_counts": {"train": 4, "val": 1, "test": 1},
+  "summary_path": "datasets/creep_synth_v0.1_20260520_001/summary.json",
+  "quality_report_path": "datasets/creep_synth_v0.1_20260520_001/quality_report.json"
+}
+```
+
+## 8) 数据集版本目录结构
+
+```text
+datasets/{dataset_name}_{version}_{YYYYMMDD}_{seq}/
+  images/train|val|test/
+  annotations/train|val|test/
+  csv/train|val|test/
+  config.yaml
+  distribution.yaml
+  seed.json
+  summary.json
+  quality_report.json
+  README.md
+```
+
+文件作用：
+
+- `config.yaml`：保存本次请求参数。
+- `distribution.yaml`：保存模板概率分布和模式。
+- `seed.json`：保存全局种子和每个 sample_id 的 sample_seed。
+- `summary.json`：保存总量、split 数量、模式与分布统计。
+- `quality_report.json`：保存通过/警告/失败统计与样本 warning。
+
+## 9) 前端批量生成区域
+
+- 页面新增“批量生成数据集”区域。
+- 参数：`dataset_name`、`version`、`total_count`、`mode`、`template_id`、`seed`、`train/val/test ratio`。
+- 点击按钮后调用 `POST /generate`，返回数据集 ID、路径、split 统计与摘要文件路径。
