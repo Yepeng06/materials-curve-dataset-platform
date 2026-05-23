@@ -31,8 +31,20 @@ def test_probabilistic_template_enforced_fields_present():
     out = sample_parameters("probabilistic", {"seed": 7, "num_curves": 1}, template_data=template)
     enforced = out["template_enforced_fields"]
     assert enforced
-    assert enforced["num_curves"] == "3"
+    assert enforced["num_curves"] == 3
     assert enforced["curve_shape"] == "three_stage"
+    assert isinstance(enforced["grid"], bool)
+    assert enforced["grid"] is True
+
+
+def test_probabilistic_only_overrides_supported_fields():
+    template = {
+        "default_parameters": {"x_label": "Default X"},
+        "probability_distributions": {"num_curves": {"4": 1.0}},
+    }
+    out = sample_parameters("probabilistic", {"seed": 11, "x_label": "Manual X", "num_curves": 1}, template_data=template)
+    assert out["num_curves"] == 4
+    assert out["x_label"] == "Manual X"
 
 
 def test_template_defaults_applied_recorded_in_explicit():

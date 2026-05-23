@@ -217,7 +217,9 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
             {
                 "dataset_info": {
                     "name": "preview",
-                    "version": APP_VERSION,
+                    "version": "preview",
+                    "dataset_version": "preview",
+                    "generator_version": APP_VERSION,
                     "mode": params["mode"],
                     "template_id": req.template_id,
                     "template_name": template_data.get("template_name", req.template_id),

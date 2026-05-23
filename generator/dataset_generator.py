@@ -17,6 +17,7 @@ from generator.quality_check import run_quality_check
 from generator.renderer import render_preview
 from generator.sampler import sample_parameters
 
+GENERATOR_VERSION = "V0fix-final-2"
 
 @dataclass
 class GenerateResult:
@@ -142,6 +143,8 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                 "dataset_info": {
                     "name": req_data["dataset_name"],
                     "version": req_data["version"],
+                    "dataset_version": req_data["version"],
+                    "generator_version": GENERATOR_VERSION,
                     "dataset_id": dataset_id,
                     "mode": mode,
                     "template_id": req_data["template_id"],
