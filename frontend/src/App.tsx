@@ -63,6 +63,7 @@ const generateDefaults: GenerateParams = {
 const probOverridden = ['num_curves', 'curve_shape', 'line_style', 'marker', 'legend_position', 'grid']
 
 export default function App() {
+  const [formError, setFormError] = useState<string>('')
   const [items, setItems] = useState<PreviewItem[]>([])
   const [templates, setTemplates] = useState<TemplateItem[]>([])
   const [params, setParams] = useState<PreviewParams>(defaults)
@@ -71,6 +72,44 @@ export default function App() {
   const [actualSnapshot, setActualSnapshot] = useState<Record<string, unknown> | null>(null)
   const [expandedJson, setExpandedJson] = useState<Record<number, boolean>>({})
   const [generateResult, setGenerateResult] = useState<Record<string, unknown> | null>(null)
+  const [previewCountInput, setPreviewCountInput] = useState(String(defaults.preview_count))
+  const [seedInput, setSeedInput] = useState(String(defaults.seed))
+  const [numCurvesInput, setNumCurvesInput] = useState(String(defaults.num_curves))
+  const [pointsPerCurveInput, setPointsPerCurveInput] = useState(String(defaults.points_per_curve))
+  const [noiseLevelInput, setNoiseLevelInput] = useState(String(defaults.noise_level))
+  const [lineWidthInput, setLineWidthInput] = useState(String(defaults.line_width))
+  const [xMinInput, setXMinInput] = useState(String(defaults.x_range[0]))
+  const [xMaxInput, setXMaxInput] = useState(String(defaults.x_range[1]))
+  const [totalCountInput, setTotalCountInput] = useState(String(generateDefaults.total_count))
+  const [splitTrainInput, setSplitTrainInput] = useState(String(generateDefaults.split.train))
+  const [splitValInput, setSplitValInput] = useState(String(generateDefaults.split.val))
+  const [splitTestInput, setSplitTestInput] = useState(String(generateDefaults.split.test))
+
+  const parseNumberInput = (value: string): number | null => {
+    const trimmed = value.trim()
+    if (trimmed === '') return null
+    const n = Number(trimmed)
+    return Number.isFinite(n) ? n : null
+  }
+
+  const numericFieldError = (label: string) => `${label} 请输入合法数字`
+
+  const validateAndClampNumber = (
+    rawValue: string,
+    opts: { label: string; min?: number; max?: number; integer?: boolean }
+  ): number | null => {
+    const parsed = parseNumberInput(rawValue)
+    if (parsed === null) {
+      setFormError(numericFieldError(opts.label))
+      return null
+    }
+    const normalized = opts.integer ? Math.trunc(parsed) : parsed
+    if ((opts.min !== undefined && normalized < opts.min) || (opts.max !== undefined && normalized > opts.max)) {
+      setFormError(`${opts.label} 超出范围`)
+      return null
+    }
+    return normalized
+  }
 
   useEffect(() => {
     fetch('http://127.0.0.1:8000/templates').then((r) => r.json()).then((d) => setTemplates(d.items ?? []))
@@ -84,7 +123,32 @@ export default function App() {
   }
 
   const generatePreview = async () => {
-    const payload = { ...params }
+    setFormError('')
+    const previewCount = validateAndClampNumber(previewCountInput, { label: 'preview_count', min: 3, max: 6, integer: true })
+    const seed = validateAndClampNumber(seedInput, { label: 'seed', integer: true })
+    const numCurves = validateAndClampNumber(numCurvesInput, { label: 'num_curves', min: 1, max: 5, integer: true })
+    const pointsPerCurve = validateAndClampNumber(pointsPerCurveInput, { label: 'points_per_curve', min: 50, max: 500, integer: true })
+    const noiseLevel = validateAndClampNumber(noiseLevelInput, { label: 'noise_level', min: 0, max: 0.1 })
+    const lineWidth = validateAndClampNumber(lineWidthInput, { label: 'line_width', min: 0.5, max: 4 })
+    const xMin = validateAndClampNumber(xMinInput, { label: 'x_min' })
+    const xMax = validateAndClampNumber(xMaxInput, { label: 'x_max' })
+    if ([previewCount, seed, numCurves, pointsPerCurve, noiseLevel, lineWidth, xMin, xMax].some((v) => v === null)) return
+    if ((xMin as number) >= (xMax as number)) {
+      setFormError('x_min 必须小于 x_max')
+      return
+    }
+    const safeParams = {
+      ...params,
+      preview_count: previewCount as number,
+      seed: seed as number,
+      num_curves: numCurves as number,
+      points_per_curve: pointsPerCurve as number,
+      noise_level: noiseLevel as number,
+      line_width: lineWidth as number,
+      x_range: [xMin as number, xMax as number] as [number, number],
+    }
+    setParams(safeParams)
+    const payload = { ...safeParams }
     setRequestSnapshot(payload)
     const res = await fetch('http://127.0.0.1:8000/preview', {
       method: 'POST',
@@ -99,9 +163,26 @@ export default function App() {
   }
 
   const generateDataset = async () => {
+    setFormError('')
+    const totalCount = validateAndClampNumber(totalCountInput, { label: 'total_count', min: 1, integer: true })
+    const train = validateAndClampNumber(splitTrainInput, { label: 'split.train', min: 0, max: 1 })
+    const val = validateAndClampNumber(splitValInput, { label: 'split.val', min: 0, max: 1 })
+    const test = validateAndClampNumber(splitTestInput, { label: 'split.test', min: 0, max: 1 })
+    if ([totalCount, train, val, test].some((v) => v === null)) return
+    const splitSum = (train as number) + (val as number) + (test as number)
+    if (Math.abs(splitSum - 1.0) > 1e-6) {
+      setFormError('split.train + split.val + split.test 必须等于 1.0')
+      return
+    }
+    const safeGenerateParams = {
+      ...generateParams,
+      total_count: totalCount as number,
+      split: { train: train as number, val: val as number, test: test as number },
+    }
+    setGenerateParams(safeGenerateParams)
     const payload = {
       ...params,
-      ...generateParams,
+      ...safeGenerateParams,
     }
     setRequestSnapshot(payload)
     const res = await fetch('http://127.0.0.1:8000/generate', {
@@ -149,12 +230,13 @@ export default function App() {
       </section>
 
       <section>
+        {formError && <p style={{ color: 'red' }}>{formError}</p>}
         <h2>预览参数</h2>
-        <label>preview_count<input type="number" min={3} max={6} value={params.preview_count} onChange={(e) => setParams({ ...params, preview_count: Number(e.target.value) })} /></label>
-        <label>seed<input type="number" value={params.seed} onChange={(e) => setParams({ ...params, seed: Number(e.target.value) })} /></label>
+        <label>preview_count<input type="number" min={3} max={6} value={previewCountInput} onChange={(e) => setPreviewCountInput(e.target.value)} /></label>
+        <label>seed<input type="number" value={seedInput} onChange={(e) => setSeedInput(e.target.value)} /></label>
 
         <h3>曲线参数</h3>
-        <label>num_curves<input type="number" min={1} max={5} value={params.num_curves} onChange={(e) => setParams({ ...params, num_curves: Number(e.target.value) })} /></label>
+        <label>num_curves<input type="number" min={1} max={5} value={numCurvesInput} onChange={(e) => setNumCurvesInput(e.target.value)} /></label>
         <label>
           curve_shape
           <select value={params.curve_shape} onChange={(e) => setParams({ ...params, curve_shape: e.target.value })}>
@@ -165,12 +247,12 @@ export default function App() {
             <option value="irregular">irregular</option>
           </select>
         </label>
-        <label>points_per_curve<input type="number" min={50} max={500} value={params.points_per_curve} onChange={(e) => setParams({ ...params, points_per_curve: Number(e.target.value) })} /></label>
-        <label>noise_level<input type="number" min={0} max={0.1} step={0.001} value={params.noise_level} onChange={(e) => setParams({ ...params, noise_level: Number(e.target.value) })} /></label>
+        <label>points_per_curve<input type="number" min={50} max={500} value={pointsPerCurveInput} onChange={(e) => setPointsPerCurveInput(e.target.value)} /></label>
+        <label>noise_level<input type="number" min={0} max={0.1} step={0.001} value={noiseLevelInput} onChange={(e) => setNoiseLevelInput(e.target.value)} /></label>
 
         <h3>样式参数</h3>
         <label>line_style<input value={params.line_style} onChange={(e) => setParams({ ...params, line_style: e.target.value })} /></label>
-        <label>line_width<input type="number" min={0.5} max={4} step={0.1} value={params.line_width} onChange={(e) => setParams({ ...params, line_width: Number(e.target.value) })} /></label>
+        <label>line_width<input type="number" min={0.5} max={4} step={0.1} value={lineWidthInput} onChange={(e) => setLineWidthInput(e.target.value)} /></label>
         <label>marker<input value={params.marker} onChange={(e) => setParams({ ...params, marker: e.target.value })} /></label>
         <label>legend_position<input value={params.legend_position} onChange={(e) => setParams({ ...params, legend_position: e.target.value })} /></label>
         <label>grid<input type="checkbox" checked={params.grid} onChange={(e) => setParams({ ...params, grid: e.target.checked })} /></label>
@@ -180,20 +262,26 @@ export default function App() {
         <label>x_unit<input value={params.x_unit} onChange={(e) => setParams({ ...params, x_unit: e.target.value })} /></label>
         <label>y_label<input value={params.y_label} onChange={(e) => setParams({ ...params, y_label: e.target.value })} /></label>
         <label>y_unit<input value={params.y_unit} onChange={(e) => setParams({ ...params, y_unit: e.target.value })} /></label>
-        <label>x_min<input type="number" value={params.x_range[0]} onChange={(e) => setParams({ ...params, x_range: [Number(e.target.value), params.x_range[1]] })} /></label>
-        <label>x_max<input type="number" value={params.x_range[1]} onChange={(e) => setParams({ ...params, x_range: [params.x_range[0], Number(e.target.value)] })} /></label>
+        <label>x_min<input type="number" value={xMinInput} onChange={(e) => setXMinInput(e.target.value)} /></label>
+        <label>x_max<input type="number" value={xMaxInput} onChange={(e) => setXMaxInput(e.target.value)} /></label>
         <div><button onClick={generatePreview}>生成预览图</button></div>
       </section>
 
       <section>
         <h2>数据集生成（/generate）</h2>
+        <p>说明：dataset_name 是数据集名称；dataset_id 将由后端自动生成。</p>
         <label>dataset_name<input value={generateParams.dataset_name} onChange={(e) => setGenerateParams({ ...generateParams, dataset_name: e.target.value })} /></label>
         <label>version<input value={generateParams.version} onChange={(e) => setGenerateParams({ ...generateParams, version: e.target.value })} /></label>
-        <label>total_count<input type="number" min={1} value={generateParams.total_count} onChange={(e) => setGenerateParams({ ...generateParams, total_count: Number(e.target.value) })} /></label>
-        <label>split.train<input type="number" step={0.1} value={generateParams.split.train} onChange={(e) => setGenerateParams({ ...generateParams, split: { ...generateParams.split, train: Number(e.target.value) } })} /></label>
-        <label>split.val<input type="number" step={0.1} value={generateParams.split.val} onChange={(e) => setGenerateParams({ ...generateParams, split: { ...generateParams.split, val: Number(e.target.value) } })} /></label>
-        <label>split.test<input type="number" step={0.1} value={generateParams.split.test} onChange={(e) => setGenerateParams({ ...generateParams, split: { ...generateParams.split, test: Number(e.target.value) } })} /></label>
+        <label>total_count<input type="number" min={1} value={totalCountInput} onChange={(e) => setTotalCountInput(e.target.value)} /></label>
+        <label>split.train<input type="number" step={0.1} value={splitTrainInput} onChange={(e) => setSplitTrainInput(e.target.value)} /></label>
+        <label>split.val<input type="number" step={0.1} value={splitValInput} onChange={(e) => setSplitValInput(e.target.value)} /></label>
+        <label>split.test<input type="number" step={0.1} value={splitTestInput} onChange={(e) => setSplitTestInput(e.target.value)} /></label>
         <div><button onClick={generateDataset}>生成数据集</button></div>
+        {generateResult && (
+          <p>
+            dataset_id: {String(generateResult.dataset_id ?? '-')} | dataset_path: {String(generateResult.dataset_path ?? '-')} | split_counts: {JSON.stringify(generateResult.split_counts ?? {})}
+          </p>
+        )}
         <details><summary>生成结果</summary><pre>{JSON.stringify(generateResult ?? {}, null, 2)}</pre></details>
       </section>
 

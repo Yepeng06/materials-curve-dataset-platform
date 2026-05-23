@@ -35,6 +35,10 @@ SUPPORTED_PROB_FIELDS = [
     "legend_position",
     "grid",
 ]
+BOOL_FIELDS = {"grid"}
+INT_FIELDS = {"num_curves", "points_per_curve", "preview_count", "seed"}
+FLOAT_FIELDS = {"noise_level", "line_width"}
+STRING_FIELDS = {"curve_shape", "line_style", "marker", "legend_position"}
 
 TRACKED_ACTUAL_FIELDS = [
     "num_curves", "curve_shape", "line_style", "marker", "legend_position", "grid",
@@ -62,6 +66,26 @@ def _choice_by_distribution(rng: np.random.Generator, distribution: dict[str, fl
         return fallback
     probs = probs / total
     return keys[int(rng.choice(len(keys), p=probs))]
+
+
+def _normalize_field_type(field: str, value: Any) -> Any:
+    if field in BOOL_FIELDS:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "1", "yes"}:
+                return True
+            if lowered in {"false", "0", "no"}:
+                return False
+        return bool(value)
+    if field in INT_FIELDS:
+        return int(value)
+    if field in FLOAT_FIELDS:
+        return float(value)
+    if field in STRING_FIELDS:
+        return str(value)
+    return value
 
 
 def sample_parameters(mode: str, config: dict[str, Any] | None, template_data: dict[str, Any] | None = None, sample_index: int = 0) -> dict[str, Any]:
@@ -93,9 +117,10 @@ def sample_parameters(mode: str, config: dict[str, Any] | None, template_data: d
         rng = np.random.default_rng(base_seed + sample_index)
         for field in SUPPORTED_PROB_FIELDS:
             sampled_value = _choice_by_distribution(rng, distributions.get(field), merged.get(field))
-            sampled_parameters[field] = sampled_value
-            merged[field] = sampled_value
-            enforced_fields[field] = sampled_value
+            normalized_value = _normalize_field_type(field, sampled_value)
+            sampled_parameters[field] = normalized_value
+            merged[field] = normalized_value
+            enforced_fields[field] = normalized_value
 
     merged = _validate_common(merged)
     merged["mode"] = mode
