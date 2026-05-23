@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+BW_PALETTE=["#111111", "#444444", "#666666", "#888888", "#222222"]
 MARKER_MAP = {
     "triangle": "^",
     "circle": "o",
@@ -46,6 +47,9 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
         marker_key = sample["marker"]
         marker = None if marker_key == "none" else MARKER_MAP.get(marker_key, marker_key)
         markevery = None if marker is None else max(8, min(20, int(len(x) / 10)))
+        color = None
+        if sample.get("template_id") == "black_white_paper":
+            color = BW_PALETTE[idx % len(BW_PALETTE)]
         line, = ax.plot(
             x,
             y,
@@ -54,6 +58,7 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
             markevery=markevery,
             linewidth=sample["line_width"],
             label=f"Curve {idx+1}",
+            color=color,
         )
         disp = ax.transData.transform(list(zip(x, y)))
         pixels = [[float(px), float(py)] for px, py in disp]

@@ -1,16 +1,11 @@
 template_name: Black White Paper
-description: Grayscale publication-like template.
-image_settings: {width: 1000, height: 760, dpi: 180}
-axis_settings: {x_label: Time, x_unit: h, y_label: Creep strain, y_unit: "%", x_range: [0, 900]}
-curve_settings: {num_curves: 3, curve_shape: near_linear, points_per_curve: 170, noise_level: 0.01}
-style_settings: {line_style: dashed, line_width: 1.3, marker: none}
-legend_settings: {legend_position: inside_upper_left}
-grid_settings: {grid: true}
-default_parameters: {num_curves: 3, curve_shape: near_linear, line_style: dashed, marker: none, legend_position: inside_upper_left, grid: true}
+description: 黑白论文风格：黑灰配色、简洁图例，适合印刷模拟。
+key_effects: ["黑灰配色", "线型区分", "低彩度"]
+default_parameters: {num_curves: 3, curve_shape: near_linear, line_style: dashed, marker: circle, legend_position: inside_upper_left, grid: true}
 probability_distributions:
-  num_curves: {"2": 0.35, "3": 0.5, "4": 0.15}
-  curve_shape: {near_linear: 0.5, primary_obvious: 0.3, accelerated_obvious: 0.2}
-  line_style: {solid: 0.25, dashed: 0.6, dotted: 0.15}
-  marker: {none: 0.9, circle: 0.1}
-  legend_position: {inside_upper_left: 0.6, inside_upper_right: 0.4}
-  grid: {true: 0.75, false: 0.25}
+  num_curves: {"2": 0.3, "3": 0.55, "4": 0.15}
+  curve_shape: {near_linear: 0.55, primary_obvious: 0.25, accelerated_obvious: 0.2}
+  line_style: {solid: 0.25, dashed: 0.5, dashdot: 0.25}
+  marker: {none: 0.55, circle: 0.25, square: 0.2}
+  legend_position: {inside_upper_left: 0.65, inside_upper_right: 0.35}
+  grid: {true: 0.85, false: 0.15}
