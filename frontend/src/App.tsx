@@ -52,6 +52,7 @@ function App() {
   const [error, setError] = useState('')
   const [requestSnapshot, setRequestSnapshot] = useState<PreviewParams | null>(null)
   const [cacheBuster, setCacheBuster] = useState('')
+  const [expandedJson, setExpandedJson] = useState<Record<number, boolean>>({})
 
   const [datasetName, setDatasetName] = useState('creep_synth')
   const [version, setVersion] = useState('v0.1')
@@ -74,7 +75,7 @@ function App() {
   const generatePreview = async () => {
     const payload: PreviewParams = { ...params }
     setRequestSnapshot(payload)
-    setLoading(true); setError(''); setItems([])
+    setLoading(true); setError(''); setItems([]); setExpandedJson({})
     try {
       const res = await fetch('http://127.0.0.1:8000/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -94,13 +95,21 @@ function App() {
     } catch (e) { setGenerateError(`批量生成失败: ${(e as Error).message}`) } finally { setGenerateLoading(false) }
   }
 
+  const toggleJson = (idx: number) => setExpandedJson((prev) => ({ ...prev, [idx]: !prev[idx] }))
+
+  const copyJson = async (annotation: Record<string, unknown>) => {
+    await navigator.clipboard.writeText(JSON.stringify(annotation, null, 2))
+    window.alert('MCG-JSON 已复制到剪贴板')
+  }
+
   const cardStyle = { border: '1px solid #ddd', borderRadius: 10, padding: 16, background: '#fff', marginBottom: 16 }
   const inputStyle = { width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #ccc', boxSizing: 'border-box' as const }
   const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 12 }
+  const actionButton = { marginRight: 8, padding: '8px 14px', border: '1px solid #3366cc', borderRadius: 6, background: '#f2f6ff', cursor: 'pointer' }
 
   return <main style={{ margin: '24px auto', maxWidth: 1180, padding: '0 12px', fontFamily: 'Arial, sans-serif', background: '#f6f8fb' }}>
     <h1>Materials Curve Dataset Platform</h1>
-    <p>材料科学曲线图合成数据集生成与标注平台</p>
+    <p>材料科学曲线图合成数据集生成与标注平台（V0fix-final）</p>
 
     <section style={cardStyle}><h2>参数配置</h2>
       <h3>1. 模板与生成模式</h3><div style={gridStyle}>
@@ -135,7 +144,7 @@ function App() {
         <label>标记点<select style={inputStyle} value={params.marker} onChange={(e) => setParams({ ...params, marker: e.target.value })}><option value="none">无标记点</option><option value="circle">圆点</option><option value="triangle">三角形</option><option value="square">方形</option></select></label></div>
 
       <h3>6. 图例设置</h3><div style={gridStyle}><label>图例位置<select style={inputStyle} value={params.legend_position} onChange={(e) => setParams({ ...params, legend_position: e.target.value })}><option value="none">无图例</option><option value="inside_upper_right">图内右上</option><option value="inside_upper_left">图内左上</option><option value="inside_lower_right">图内右下</option><option value="outside_right">图外右侧</option></select></label></div>
-      <button onClick={generatePreview} disabled={loading} style={{ marginTop: 12, padding: '10px 18px' }}>{loading ? '生成中...' : '生成预览图'}</button>
+      <button onClick={generatePreview} disabled={loading} style={{ marginTop: 12, padding: '10px 18px', fontWeight: 700 }}>{loading ? '生成中...' : '生成预览图'}</button>
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
       <details><summary>本次请求参数</summary><pre>{JSON.stringify(requestSnapshot ?? params, null, 2)}</pre></details>
     </section>
@@ -147,14 +156,44 @@ function App() {
       <label>train<input style={inputStyle} type="number" step={0.1} value={trainRatio} onChange={(e) => setTrainRatio(Number(e.target.value))} /></label>
       <label>val<input style={inputStyle} type="number" step={0.1} value={valRatio} onChange={(e) => setValRatio(Number(e.target.value))} /></label>
       <label>test<input style={inputStyle} type="number" step={0.1} value={testRatio} onChange={(e) => setTestRatio(Number(e.target.value))} /></label></div>
-      <button onClick={generateDataset} disabled={generateLoading} style={{ marginTop: 12, padding: '10px 18px' }}>{generateLoading ? '批量生成中...' : '批量生成数据集'}</button>
+      <button onClick={generateDataset} disabled={generateLoading} style={{ marginTop: 12, padding: '10px 18px', fontWeight: 700 }}>{generateLoading ? '批量生成中...' : '批量生成数据集'}</button>
       {generateError && <p style={{ color: 'crimson' }}>{generateError}</p>}
-      {generateResult && <pre>{JSON.stringify(generateResult, null, 2)}</pre>}
+      {generateResult && <pre style={{ maxHeight: 260, overflow: 'auto', background: '#fafafa', padding: 12, borderRadius: 8 }}>{JSON.stringify({ dataset_path: generateResult.dataset_path, summary: generateResult.summary, quality_report: generateResult.quality_report }, null, 2)}</pre>}
     </section>
 
-    <section style={cardStyle}><h2>预览结果</h2>{items.map((item, idx) => <article key={`${item.image_path}_${idx}`} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, marginBottom: 18, textAlign: 'center' }}>
-      <h3>预览图 {idx + 1}</h3><img src={`http://127.0.0.1:8000/${item.image_path}?run=${cacheBuster}`} alt={`preview-${idx + 1}`} style={{ maxWidth: '100%', margin: '0 auto' }} />
-      <p><strong>image_path:</strong> {item.image_path}</p><details><summary>查看 MCG-JSON</summary><pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}>{JSON.stringify(item.annotation, null, 2)}</pre></details></article>)}</section>
+    <section style={cardStyle}><h2>预览结果</h2>{items.map((item, idx) => {
+      const annotation = item.annotation
+      const curves = Array.isArray(annotation.curves) ? annotation.curves as Array<Record<string, unknown>> : []
+      const firstCurve = curves[0] ?? {}
+      const style = typeof annotation.style === 'object' && annotation.style ? annotation.style as Record<string, unknown> : {}
+      const mode = annotation.dataset_info && typeof annotation.dataset_info === 'object' ? (annotation.dataset_info as Record<string, unknown>).mode : '-'
+      const sampleId = annotation.image && typeof annotation.image === 'object' ? (annotation.image as Record<string, unknown>).sample_id : '-'
+      const templateId = annotation.dataset_info && typeof annotation.dataset_info === 'object' ? (annotation.dataset_info as Record<string, unknown>).template_id : '-'
+      return <article key={`${item.image_path}_${idx}`} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 14, marginBottom: 18, textAlign: 'left', background: '#fff' }}>
+        <h3 style={{ marginTop: 4 }}>预览图 {idx + 1}</h3>
+        <div style={{ textAlign: 'center', marginBottom: 10 }}><img src={`http://127.0.0.1:8000/${item.image_path}?run=${cacheBuster}`} alt={`preview-${idx + 1}`} style={{ maxWidth: '100%', maxHeight: 360, margin: '0 auto', display: 'block' }} /></div>
+        <p><strong>图片路径：</strong>{item.image_path}</p>
+        <p><strong>标注路径：</strong>{item.annotation_path}</p>
+        <div style={{ background: '#f8f9fb', border: '1px solid #e3e6ef', borderRadius: 8, padding: 10, marginBottom: 10 }}>
+          <strong>标注摘要</strong>
+          <ul style={{ margin: '8px 0 0 18px' }}>
+            <li>sample_id: {String(sampleId ?? '-')}</li>
+            <li>mode: {String(mode ?? '-')}</li>
+            <li>template_id: {String(templateId ?? '-')}</li>
+            <li>num_curves: {curves.length}</li>
+            <li>curve_shape: {String(firstCurve.shape_type ?? '-')}</li>
+            <li>marker: {String(style.marker ?? '-')}</li>
+            <li>line_style: {String(style.line_style ?? '-')}</li>
+            <li>csv 数量: {item.csv_paths.length}</li>
+          </ul>
+        </div>
+        <div>
+          <button style={actionButton} onClick={() => toggleJson(idx)}>{expandedJson[idx] ? '隐藏 MCG-JSON' : '查看完整 MCG-JSON'}</button>
+          <button style={actionButton} onClick={() => copyJson(annotation)}>复制 MCG-JSON</button>
+        </div>
+        {expandedJson[idx] && <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto', background: '#fafafa', border: '1px solid #e4e4e4', padding: 10, borderRadius: 8, marginTop: 10 }}>{JSON.stringify(annotation, null, 2)}</pre>}
+      </article>
+    })}</section>
 
     <datalist id="x_label_options"><option value="Time" /><option value="Creep time" /><option value="Duration time" /><option value="t" /></datalist>
     <datalist id="x_unit_options"><option value="h" /><option value="hr" /><option value="hour" /><option value="day" /><option value="min" /><option value="s" /><option value="none" /></datalist>
