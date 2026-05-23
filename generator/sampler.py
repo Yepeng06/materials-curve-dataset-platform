@@ -79,11 +79,14 @@ def sample_parameters(
     incoming = deepcopy(config or {})
     incoming.pop("mode", None)
     incoming.pop("template_id", None)
-    merged.update(incoming)
-
     mode = mode or "explicit"
     if mode not in {"explicit", "probabilistic"}:
         raise ValueError(f"Unsupported mode: {mode}")
+
+    if mode == "probabilistic":
+        for field in SUPPORTED_PROB_FIELDS:
+            incoming.pop(field, None)
+    merged.update(incoming)
 
     sampled_parameters: dict[str, Any] = {}
     if mode == "probabilistic":
