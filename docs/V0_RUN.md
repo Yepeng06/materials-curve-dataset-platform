@@ -28,3 +28,6 @@
 ## 未实现（保持 V0）
 - YOLO/COCO/mask/OCR 导出。
 - 真实截图退化流程。
+
+## 当前稳定版本入口
+- 当前推荐优先查看：`docs/V0fix-final-2_RELEASE.md`
