@@ -45,11 +45,13 @@ def render_preview(sample: dict[str, Any], image_path: Path) -> dict[str, Any]:
         y = [p[1] for p in data_points]
         marker_key = sample["marker"]
         marker = None if marker_key == "none" else MARKER_MAP.get(marker_key, marker_key)
+        markevery = None if marker is None else max(8, min(20, int(len(x) / 10)))
         line, = ax.plot(
             x,
             y,
             linestyle=sample["line_style"],
             marker=marker,
+            markevery=markevery,
             linewidth=sample["line_width"],
             label=f"Curve {idx+1}",
         )

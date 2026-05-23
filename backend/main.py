@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from datetime import datetime
+from uuid import uuid4
 
 import numpy as np
 import yaml
@@ -159,6 +161,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
     for d in (images_dir, csv_dir, ann_dir):
         d.mkdir(parents=True, exist_ok=True)
 
+    preview_run_id = f"preview_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:6]}"
     items = []
     for i in range(max(3, min(req.preview_count, 6))):
         params = sample_parameters(req.mode, params_base, template_data=template_data, sample_index=i)
@@ -175,7 +178,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                 noise_level=params["noise_level"],
                 rng=rng,
             )
-            csv_path = csv_dir / f"preview_{i+1}_curve_{curve_idx+1}.csv"
+            csv_path = csv_dir / f"{preview_run_id}_{i+1}_curve_{curve_idx+1}.csv"
             export_curve_csv(data_points, csv_path)
             csv_paths.append(str(csv_path.relative_to(root)))
             curves.append(
@@ -193,7 +196,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
 
         sample = dict(params)
         sample["curves"] = curves
-        image_path = images_dir / f"preview_{i+1}.png"
+        image_path = images_dir / f"{preview_run_id}_{i+1}.png"
         render_info = render_preview(sample, image_path)
 
         for idx, curve in enumerate(curves):
@@ -245,7 +248,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
         )
         annotation["quality_check"] = run_quality_check(annotation)
 
-        ann_path = ann_dir / f"preview_{i+1}.json"
+        ann_path = ann_dir / f"{preview_run_id}_{i+1}.json"
         export_mcg_json(annotation, ann_path)
 
         items.append(
@@ -257,7 +260,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
             }
         )
 
-    return {"status": "ok", "preview_count": len(items), "items": items}
+    return {"status": "ok", "preview_run_id": preview_run_id, "preview_count": len(items), "items": items}
 
 
 @app.post('/generate')
