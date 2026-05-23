@@ -20,6 +20,8 @@ from generator.renderer import render_preview
 from generator.sampler import sample_parameters
 from generator.dataset_generator import generate_dataset
 
+APP_VERSION = "V0fix-final-2"
+
 app = FastAPI(title="Materials Curve Dataset Platform API", version="0.4.0")
 app.add_middleware(
     CORSMiddleware,
@@ -194,6 +196,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "line_style": params["line_style"],
                     "line_width": params["line_width"],
                     "marker": params["marker"],
+                    "curve_index": curve_idx,
+                    "total_curves": params["num_curves"],
                     "data_points": data_points,
                     "csv_path": str(csv_path.relative_to(root)),
                 }
@@ -213,7 +217,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
             {
                 "dataset_info": {
                     "name": "preview",
-                    "version": "v0-step4",
+                    "version": APP_VERSION,
                     "mode": params["mode"],
                     "template_id": req.template_id,
                     "template_name": template_data.get("template_name", req.template_id),

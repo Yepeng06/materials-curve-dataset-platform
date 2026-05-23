@@ -119,6 +119,8 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                     "line_style": params["line_style"],
                     "line_width": params["line_width"],
                     "marker": params["marker"],
+                    "curve_index": curve_idx,
+                    "total_curves": params["num_curves"],
                     "data_points": data_points,
                     "csv_path": str(csv_rel),
                 }
