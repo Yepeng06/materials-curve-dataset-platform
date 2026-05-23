@@ -105,6 +105,8 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                 num_points=params["points_per_curve"],
                 noise_level=params["noise_level"],
                 rng=rng,
+                curve_index=curve_idx,
+                total_curves=params["num_curves"],
             )
             csv_rel = Path("csv") / split_name / f"{sample_id}_curve_{curve_idx + 1}.csv"
             export_curve_csv(data_points, dataset_dir / csv_rel)
@@ -143,6 +145,7 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                     "template_id": req_data["template_id"],
                     "template_name": template_data.get("template_name", req_data["template_id"]),
                     "seed": global_seed,
+                    "template_defaults_applied": params.get("template_defaults_applied", False),
                 },
                 "image": {
                     "image_path": str(image_rel),
@@ -156,6 +159,7 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                     "template_id": req_data["template_id"],
                     "template_name": template_data.get("template_name", req_data["template_id"]),
                     "seed": global_seed,
+                    "template_defaults_applied": params.get("template_defaults_applied", False),
                     "sample_seed": sample_seed,
                     "actual_parameters": params.get("actual_parameters", {}),
                 },
@@ -181,6 +185,8 @@ def generate_dataset(root: Path, req_data: dict[str, Any], template_data: dict[s
                     "template_id": req_data["template_id"],
                     "template_name": template_data.get("template_name", req_data["template_id"]),
                     "sampled_parameters": params.get("sampled_parameters", {}),
+                    "template_enforced_fields": params.get("template_enforced_fields", {}),
+                    "template_defaults_applied": params.get("template_defaults_applied", False),
                     "actual_parameters": params.get("actual_parameters", {}),
                 },
                 "legend": {"position": params["legend_position"]},

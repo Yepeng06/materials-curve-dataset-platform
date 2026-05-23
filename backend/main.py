@@ -138,6 +138,9 @@ def list_templates() -> dict[str, Any]:
                     "template_name": str(data.get("template_name", template_id)),
                     "description": str(data.get("description", "")),
                     "file_name": path.name,
+                    "default_parameters": data.get("default_parameters", {}),
+                    "probability_distributions": data.get("probability_distributions", {}),
+                    "key_effects": data.get("key_effects", []),
                 }
             )
         except Exception as exc:
@@ -177,6 +180,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                 num_points=params["points_per_curve"],
                 noise_level=params["noise_level"],
                 rng=rng,
+                curve_index=curve_idx,
+                total_curves=params["num_curves"],
             )
             csv_path = csv_dir / f"{preview_run_id}_{i+1}_curve_{curve_idx+1}.csv"
             export_curve_csv(data_points, csv_path)
@@ -213,6 +218,7 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "template_id": req.template_id,
                     "template_name": template_data.get("template_name", req.template_id),
                     "seed": params["seed"],
+                    "template_defaults_applied": params.get("template_defaults_applied", False),
                 },
                 "image": {
                     "image_path": str(image_path.relative_to(root)),
@@ -239,6 +245,8 @@ def preview(req: PreviewRequest) -> dict[str, Any]:
                     "template_id": req.template_id,
                     "template_name": template_data.get("template_name", req.template_id),
                     "sampled_parameters": params.get("sampled_parameters", {}),
+                    "template_enforced_fields": params.get("template_enforced_fields", {}),
+                    "template_defaults_applied": params.get("template_defaults_applied", False),
                     "actual_parameters": params.get("actual_parameters", {}),
                 },
                 "legend": {"position": params["legend_position"]},

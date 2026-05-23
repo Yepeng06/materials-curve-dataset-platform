@@ -1,16 +1,11 @@
 template_name: Marker Rich
-description: Marker-focused style for curve point visibility.
-image_settings: {width: 1024, height: 768, dpi: 150}
-axis_settings: {x_label: Duration time, x_unit: hr, y_label: Strain, y_unit: "%", x_range: [0, 1100]}
-curve_settings: {num_curves: 3, curve_shape: primary_obvious, points_per_curve: 150, noise_level: 0.025}
-style_settings: {line_style: solid, line_width: 1.6, marker: circle}
-legend_settings: {legend_position: inside_upper_right}
-grid_settings: {grid: true}
+description: 高可见标记点风格。
+key_effects: ["marker 不含 none", "markevery 控制密度", "适合点位检测"]
 default_parameters: {num_curves: 3, curve_shape: primary_obvious, line_style: solid, marker: circle, legend_position: inside_upper_right, grid: true}
 probability_distributions:
-  num_curves: {"2": 0.2, "3": 0.5, "4": 0.3}
-  curve_shape: {near_linear: 0.2, primary_obvious: 0.5, accelerated_obvious: 0.3}
+  num_curves: {"2": 0.2, "3": 0.55, "4": 0.25}
+  curve_shape: {primary_obvious: 0.55, accelerated_obvious: 0.25, near_linear: 0.2}
   line_style: {solid: 0.7, dashed: 0.2, dotted: 0.1}
-  marker: {circle: 0.5, square: 0.25, triangle: 0.25}
+  marker: {circle: 0.5, triangle: 0.25, square: 0.25}
   legend_position: {inside_upper_right: 0.55, inside_lower_right: 0.25, outside_right: 0.2}
-  grid: {true: 0.7, false: 0.3}
+  grid: {true: 0.75, false: 0.25}
